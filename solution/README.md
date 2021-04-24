@@ -26,3 +26,7 @@ Transactions has been made : 8 Transactions
 Displayed in the table  
 • how much the value of each transaction?  
 Displayed in the table
+
+## How To Use
+>run command `sh Script.sh` on your terminal  
+The program will run automatically in a Docker container with the container name is dwh-cc
