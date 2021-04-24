@@ -73,6 +73,25 @@ def get_transactions(data_frames):
         filter_trx.append(trx)
     return filter_trx
 
+def transform_transactions(list_trx):
+    """
+    This function is used to perform transformations on transaction
+    """
+    # join dataframe using concat, add keys and reset index
+    transactions = pd.concat(list_trx, axis=0, keys=['Saving Accounts','Card 1','Card 2']).reset_index()
+    # add column datetime
+    transactions['datetime'] = pd.to_datetime(transactions['ts'], unit='ms')
+    # add column value and fill row with balance
+    transactions['value'] = transactions['set'].apply(pd.Series)['balance']
+    # Fill NaN with credit_used
+    credit_used = transactions['set'].apply(pd.Series)['credit_used']    
+    transactions = transactions.fillna(value={'value': credit_used})
+    # drop other columns
+    transactions.drop(['data', 'id','op','ts','set'], inplace=True, axis=1)
+    # rename column
+    transactions.rename({'level_0': 'source'}, inplace=True, axis=1)
+    return transactions
+
 def main():
     # Visualize the complete historical table view of each tables
     historical_each_tables = complete_historical()
@@ -81,7 +100,10 @@ def main():
     data_frames = denormalized_table(historical_each_tables)    
 
     # get transactions
-    get_transactions(data_frames)
+    list_trx = get_transactions(data_frames)
+    
+    # transform transactions
+    transform_transactions(list_trx)
 
 if __name__ == "__main__":
     main()
