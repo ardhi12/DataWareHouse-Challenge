@@ -53,12 +53,35 @@ def denormalized_table(historical_each_table):
     print("")
     return data_frames
 
+def get_transactions(data_frames):
+    """
+    This function is used to filter the DataFrame to get a list of transactions
+    """
+    filter_trx = []
+    # get list of unique values from column 'id' / index
+    list_unique_id = data_frames.index.unique().tolist()
+    # remove first index of list
+    list_unique_id.pop(0)    
+    for unique_id in list_unique_id:
+        # set the key
+        key = 'balance'
+        if 'c' in unique_id:
+            key = 'credit_used'
+        # filter based on unique id and key column that is not null
+        trx = data_frames[(data_frames.index.str.contains(unique_id)) & (data_frames['set'].apply(pd.Series)[key].notnull())]
+        # append each transaction
+        filter_trx.append(trx)
+    return filter_trx
+
 def main():
     # Visualize the complete historical table view of each tables
     historical_each_tables = complete_historical()
     
     # Visualize the complete historical table view of the denormalized joined table
-    denormalized_table(historical_each_tables)    
+    data_frames = denormalized_table(historical_each_tables)    
+
+    # get transactions
+    get_transactions(data_frames)
 
 if __name__ == "__main__":
     main()
