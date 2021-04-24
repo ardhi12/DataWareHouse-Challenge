@@ -103,7 +103,14 @@ def main():
     list_trx = get_transactions(data_frames)
     
     # transform transactions
-    transform_transactions(list_trx)
+    transactions = transform_transactions(list_trx)
+    
+    # how many transactions has been made
+    print(f"Transactions has been made : {transactions.shape[0]} Transactions")
+    
+    # when did each of transactions occur and how much the value of each transaction
+    print("Transactions datetime and value :")
+    display(transactions)
 
 if __name__ == "__main__":
     main()
