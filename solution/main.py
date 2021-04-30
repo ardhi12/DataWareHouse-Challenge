@@ -1,116 +1,35 @@
-# import packages
-from IPython.display import display
-import pandas as pd
-import glob
-import json
-import os
-
-# functions
-def extract_json(source):
-    """
-    This function is used to get data from the event log
-    """
-    # retrieve all json files by source folder
-    source = glob.glob("data/"+source+"/*.json")    
-    combined_results = []
-    for file in source:
-        # open the json file
-        f = open(file, "r")
-        # append the data to list
-        combined_results.append(json.load(f))    
-    # convert combined_results list to DataFrame and return it
-    return pd.DataFrame(combined_results)
-
-def complete_historical():
-    """
-    This function is used to get the list of source directories and 
-    display the complete history of the table
-    """
-    df_list = []
-    # get directories
-    my_dir = os.listdir("data")
-    for dir in my_dir:
-        # get the dataframe of table
-        df_dir = extract_json(dir)
-        # display the visualization        
-        print(f"Visualization of {dir} table")        
-        display(df_dir)
-        print("")
-        # append each dataframe to list
-        df_list.append(df_dir)
-    return df_list
-
-def denormalized_table(historical_each_table):
-    """
-    This function is used to denormalize joined table
-    """
-    # joining tables using concat, sort values by timestamp and DB operation
-    # and set column 'id' as index
-    data_frames = pd.concat(historical_each_table, axis=0).sort_values(by=['ts','op']).set_index('id')
-    # display the visualization
-    print(f"Visualization of the denormalized joined table")        
-    display(data_frames)
-    print("")
-    return data_frames
-
-def get_transactions(data_frames):
-    """
-    This function is used to filter the DataFrame to get a list of transactions
-    """
-    filter_trx = []
-    # get list of unique values from column 'id' / index
-    list_unique_id = data_frames.index.unique().tolist()
-    # remove first index of list
-    list_unique_id.pop(0)    
-    for unique_id in list_unique_id:
-        # set the key
-        key = 'balance'
-        if 'c' in unique_id:
-            key = 'credit_used'
-        # filter based on unique id and key column that is not null
-        trx = data_frames[(data_frames.index.str.contains(unique_id)) & (data_frames['set'].apply(pd.Series)[key].notnull())]
-        # append each transaction
-        filter_trx.append(trx)
-    return filter_trx
-
-def transform_transactions(list_trx):
-    """
-    This function is used to perform transformations on transaction
-    """
-    # join dataframe using concat, add keys and reset index
-    transactions = pd.concat(list_trx, axis=0, keys=['Saving Accounts','Card 1','Card 2']).reset_index()
-    # add column datetime
-    transactions['datetime'] = pd.to_datetime(transactions['ts'], unit='ms')
-    # add column value and fill row with balance
-    transactions['value'] = transactions['set'].apply(pd.Series)['balance']
-    # Fill NaN with credit_used
-    credit_used = transactions['set'].apply(pd.Series)['credit_used']    
-    transactions = transactions.fillna(value={'value': credit_used})
-    # drop other columns
-    transactions.drop(['data', 'id','op','ts','set'], inplace=True, axis=1)
-    # rename column
-    transactions.rename({'level_0': 'source'}, inplace=True, axis=1)
-    return transactions
-
-def main():
-    # Visualize the complete historical table view of each tables
-    historical_each_tables = complete_historical()
-    
-    # Visualize the complete historical table view of the denormalized joined table
-    data_frames = denormalized_table(historical_each_tables)    
-
-    # get transactions
-    list_trx = get_transactions(data_frames)
-    
-    # transform transactions
-    transactions = transform_transactions(list_trx)
-    
-    # how many transactions has been made
-    print(f"Transactions has been made : {transactions.shape[0]} Transactions")
-    
-    # when did each of transactions occur and how much the value of each transaction
-    print("Transactions datetime and value :")
-    display(transactions)
+from pyspark.sql import SparkSession
+from pyspark.sql import functions
 
 if __name__ == "__main__":
-    main()
+    # Create a SparkSession # provide the cluster information unless running on local system.
+    spark = SparkSession.builder.master("local[*]").appName("dwh").getOrCreate()
+
+    # load, create and visualize views from Accounts
+    accountsDF = spark.read.json('data/accounts/*.json')
+    accountsDF.createOrReplaceTempView("accountsView")
+    spark.sql("select * from accountsView").show()
+    
+    # load, create and visualize views from Cards
+    cardsDF = spark.read.json('data/cards/*.json')
+    cardsDF.createOrReplaceTempView("cardsView")
+    spark.sql("select * from cardsView").show()
+    
+    # load,create and visualize views from Savings accounts
+    savings_accountsDF = spark.read.json('data/savings_accounts/*.json')
+    savings_accountsDF.createOrReplaceTempView("savings_accountsView")
+    spark.sql("select * from savings_accountsView").show()
+    
+    # create denormalized joined table view
+    denormalized = spark.sql(
+            "SELECT A.ts as A_ts, A.id as A_id, A.op as A_op, A.data as A_data, A.set as A_set, B.ts as B_ts, B.id as B_id, B.op as B_op, B.data as B_data, B.set as B_set, C.ts as C_ts, C.id as C_id, C.op as C_op, C.data as C_data, C.set as C_set FROM accountsView A FULL JOIN cardsView B ON B.ts = A.ts FULL JOIN savings_accountsView C ON C.ts = A.ts").cache()
+    denormalized.createOrReplaceTempView("denormalizedView")
+    spark.sql("select * from denormalizedView").show(truncate=False)
+    
+    # convert millis to datetime
+    denormalized = denormalized.withColumn("A_datetime", functions.to_utc_timestamp(functions.from_unixtime(functions.col("A_ts")/1000,'yyyy-MM-dd HH:mm:ss'),'UTC'))
+    denormalized = denormalized.withColumn("B_datetime", functions.to_utc_timestamp(functions.from_unixtime(functions.col("B_ts")/1000,'yyyy-MM-dd HH:mm:ss'),'UTC'))
+    denormalized = denormalized.withColumn("C_datetime", functions.to_utc_timestamp(functions.from_unixtime(functions.col("C_ts")/1000,'yyyy-MM-dd HH:mm:ss'),'UTC'))
+    
+    # get transactions
+    denormalized.select("B_datetime","B_set.credit_used","C_datetime","C_set.balance").filter("B_set.credit_used is not null OR C_set.balance is not null").sort("B_datetime","C_datetime").show()

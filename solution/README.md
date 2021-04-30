@@ -3,30 +3,25 @@
 ## The Solution
 
 1. Visualize the complete historical table view of each tables
->The first thing to do is check and retrieve all directory names, then extract the data of all json files located in each directory. After that the extract results are converted into the dataframe. Display the results of each table in tabular format.
+>First, load all json files. then create a view based on the loaded table. Finally, visualize the complete historical table view of each tables.
 
 2. Visualize the complete historical table view of the denormalized joined table
->The dataframe of each table generated in the above step is merged using concat, sort values by timestamp and DB operation and set column 'id' as index. The merge is done in order to denormalize and get the sequence of events that occurred. Result of denormalization displayed in tabular format.
+> First, join all view tables with full outer join based on timestamp column, then create a view based on the joined table. Finally, Visualize the complete historical table view of the denormalized joined table.
 
-3. Filter dataframe
-> Filter based on unique id and key column that is not null to get rows containing transactions such as balance changes or credit usage
-
-4. Transform transactions
-> A few steps are performed:     
-• Merge list transactions using concat by giving keys to see which rows are coming from which dataframe. then reset index.  
-• Add `datetime` column by converting timestamps to datetime format  
-• Add `value` column and fill row with balance and credit_used  
-• Drop id, data, op, ts, and set columns  
-• Rename `level_0` column (key column) to `source`
-
-5. The Information
-> • How many transactions has been made?  
-Transactions has been made : 8 Transactions  
-• when did each of them occur?  
-Displayed in the table  
-• how much the value of each transaction?  
-Displayed in the table
+3. The Discussion
+> Transactions that occur:  
+• Credit card usage  
+12000 at 2020-01-06 19:30:00  
+19000 at 2020-01-08 01:00:00  
+0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;at 2020-01-10 18:00:00  
+37000 at 2020-01-18 22:30:00  
+• Balance Changes  
+15000 at 2020-01-02 16:00:00  
+40000 at 2020-01-10 16:30:00  
+21000 at 2020-01-10 18:00:00  
+33000 at 2020-01-20 14:30:00  
+Number of transactions made : **8 transactions**
 
 ## How To Use
 >run command `sh Script.sh` on your terminal  
-The program will run automatically in a Docker container with the container name is dwh-cc
+The program will run automatically in a Docker container with the container name is dwh-pyspark

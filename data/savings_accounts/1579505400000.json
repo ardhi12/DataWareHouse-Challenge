@@ -1,8 +1,1 @@
-{
-  "id": "sa1globalid",
-  "op": "u",
-  "ts": 1579505400000,
-  "set": {
-    "balance": 33000
-  }
-}
+{"id":"sa1globalid","op":"u","ts":1579505400000,"set":{"balance":33000}}

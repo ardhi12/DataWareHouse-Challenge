@@ -1,8 +1,1 @@
-{
-  "id": "c2globalid",
-  "op": "u",
-  "ts": 1579361400000,
-  "set": {
-    "credit_used": 37000
-  }
-}
+{"id":"c2globalid","op":"u","ts":1579361400000,"set":{"credit_used":37000}}

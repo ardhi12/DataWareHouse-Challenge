@@ -1,8 +1,1 @@
-{
-  "id": "a1globalid",
-  "op": "u",
-  "ts": 1579078860000,
-  "set": {
-    "card_id": ""
-  }
-}
+{"id":"a1globalid","op":"u","ts":1579078860000,"set":{"card_id":""}}

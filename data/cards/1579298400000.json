@@ -1,8 +1,1 @@
-{
-  "id": "c2globalid",
-  "op": "u",
-  "ts": 1579298400000,
-  "set": {
-    "status": "ACTIVE"
-  }
-}
+{"id":"c2globalid","op":"u","ts":1579298400000,"set":{"status":"ACTIVE"}}
